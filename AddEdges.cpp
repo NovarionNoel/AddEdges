@@ -6,12 +6,29 @@
 #include <thread>
 #include <iomanip>
 #include <cstring>
+#include <vector>
+#include <unordered_set>
+
+using namespace std;
+/*
+Adding edges
+attempt elimination order
+any nodes in elimination order can be skipped
+calculate clustering coefficient
+(n*(n-1))/2 - e
+fill-in
+attempt elimination order
+finding minimum fill in is NP complete (go cry about it)
+*/
+// file types
 #define TXT 11
 #define MTX 12
 #define EDGES 13
 #define NODES 14
+// function signatures
+void fillInEdges(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int node);
+int findLowestClusteringCoefficient(unordered_map<int, unordered_map<int, int>> &AdjacencyList, unordered_map<int, bool> &eliminationOrder, unordered_map<int, float> &clusteringCoefficients);
 
-using namespace std;
 unordered_map<int, unordered_map<int, int>> createAdjacencyList(fstream *file, int type, int skip)
 {
    unordered_map<int, unordered_map<int, int>> AdjacencyList;
@@ -68,6 +85,82 @@ unordered_map<int, unordered_map<int, int>> createAdjacencyList(fstream *file, i
    return AdjacencyList;
 }
 
+bool isEliminationOrder(unordered_map<int, bool> &eliminationOrder)
+{
+   for (const auto &[node, eliminated] : eliminationOrder)
+   {
+      if (!eliminated)
+      {
+         return false;
+      }
+   }
+   return true;
+}
+
+bool inEliminationOrder(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int nodeCheck)
+{
+   unordered_set<int> eliminatedNodes;
+   for (int i = 0; i < AdjacencyList.size(); i++)
+   {
+      int minDegreeNode = -1;
+      int minDegree = numeric_limits<int>::max();
+      for (const auto &nodeSet : AdjacencyList)
+      {
+         int node = nodeSet.first;
+         if (eliminatedNodes.find(node) == eliminatedNodes.end())
+         {
+            int degree = nodeSet.second.size();
+            if (degree < minDegree)
+            {
+               minDegree == degree;
+               minDegreeNode = node;
+            }
+         }
+      }
+      if (minDegreeNode == -1)
+      {
+         return false;
+      }
+      eliminatedNodes.insert(minDegreeNode);
+      if (nodeCheck == minDegreeNode)
+      {
+         return true;
+      }
+   }
+   return false;
+}
+
+void addToEliminationOrder(unordered_map<int, unordered_map<int, int>> &AdjacencyList, unordered_map<int, bool> &eliminationOrder)
+{
+   for (const auto &[node, edgeSet] : AdjacencyList)
+   {
+      eliminationOrder[node] = inEliminationOrder(AdjacencyList, node);
+   }
+}
+
+float clusteringCoefficient(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int node)
+{
+   unordered_map<int, int> &neighbors = AdjacencyList.at(node);
+   int edges = 0;
+   int possibleEdges = neighbors.size() * (neighbors.size() - 1);
+   if (possibleEdges == 0)
+   {
+      return 0.0;
+   }
+   for (const auto &pair : neighbors)
+   {
+      int neighbor = pair.first;
+      for (const auto &otherPair : neighbors)
+      {
+         int anotherNeighbor = otherPair.first;
+         if (neighbor != anotherNeighbor && AdjacencyList.find(neighbor) != AdjacencyList.end() && AdjacencyList.at(neighbor).count(anotherNeighbor))
+         {
+            edges++;
+         }
+      }
+   }
+   return static_cast<float>((edges) / static_cast<float>(possibleEdges));
+}
 string getCurrentDateTime(const string &format)
 {
    auto now = chrono::system_clock::now();
@@ -133,6 +226,68 @@ void printAdjList(unordered_map<int, unordered_map<int, int>> adjList)
    }
 }
 
+void edgeAddingAlgorithm(unordered_map<int, unordered_map<int, int>> &AdjacencyList, unordered_map<int, bool> &eliminationOrder, unordered_map<int, float> &clusteringCoefficients)
+{
+
+   // first, add to elimination order
+   addToEliminationOrder(AdjacencyList, eliminationOrder);
+
+   // then, check if ordering is valid
+   if (isEliminationOrder(eliminationOrder))
+   {
+      return;
+   }
+
+   // select next node by clustering coefficient
+   int nextNode = findLowestClusteringCoefficient(AdjacencyList, eliminationOrder, clusteringCoefficients);
+
+   // as long as a non-zero result was found, continue algorithm
+   if (nextNode != -1)
+   {
+      fillInEdges(AdjacencyList, nextNode);
+   }
+
+   // recursively call until complete
+   edgeAddingAlgorithm(AdjacencyList, eliminationOrder, clusteringCoefficients);
+}
+
+void fillInEdges(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int node)
+{
+   unordered_map<int, int> neighbors = AdjacencyList.at(node);
+   for (const auto &pair : neighbors)
+   {
+      int neighbor = pair.first;
+      for (const auto &otherPair : neighbors)
+      {
+         int anotherNeighbor = otherPair.first;
+         if (neighbor != anotherNeighbor && AdjacencyList[neighbor].count(anotherNeighbor) == 0)
+         {
+            AdjacencyList[node][anotherNeighbor] = 0;
+            AdjacencyList[anotherNeighbor][node] = 0;
+         }
+      }
+   }
+}
+
+int findLowestClusteringCoefficient(unordered_map<int, unordered_map<int, int>> &AdjacencyList, unordered_map<int, bool> &eliminationOrder, unordered_map<int, float> &clusteringCoefficients)
+{
+   int lowestCC = 2;
+   int lowestNode = -1;
+   for (const auto &[node, edgeSet] : AdjacencyList)
+   {
+      if (eliminationOrder[node] == false)
+      {
+         clusteringCoefficients[node] = clusteringCoefficient(AdjacencyList, node);
+         if (lowestCC > clusteringCoefficients[node] && clusteringCoefficients[node] != 0)
+         {
+            lowestCC = clusteringCoefficients[node];
+            lowestNode = node;
+         }
+      }
+   }
+   return lowestNode;
+}
+
 int main(int argc, char *argv[])
 {
    int skip = 0;
@@ -170,6 +325,19 @@ int main(int argc, char *argv[])
          }
 
          AdjacencyList = createAdjacencyList(&combinedGraph, type, skip);
+         cout << "ORIGINAL LIST\n";
+         printAdjList(AdjacencyList);
+
+         // create elimination order
+         unordered_map<int, bool> eliminationOrder;
+         unordered_map<int, float> clusteringCoefficients;
+         for (auto const &nodeSet : AdjacencyList)
+         {
+            eliminationOrder[nodeSet.first] = false;
+            clusteringCoefficients[nodeSet.first] = 0;
+         }
+         edgeAddingAlgorithm(AdjacencyList, eliminationOrder, clusteringCoefficients);
+         cout << "CHORDAL LIST\n";
          printAdjList(AdjacencyList);
       }
    }
