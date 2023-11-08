@@ -97,24 +97,28 @@ bool isEliminationOrder(unordered_map<int, bool> &eliminationOrder)
    return true;
 }
 
-// culprit of errors, marks all nodes as belonging to the elimination order
-bool inEliminationOrder(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int nodeCheck)
+bool inEliminationOrder(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int nodeCheck, unordered_map<int, bool> &eliminationOrder)
 {
    unordered_set<int> eliminatedNodes;
+
+   int minDegreeNode = -1;
+   int minDegree = numeric_limits<int>::max();
    for (int i = 0; i < AdjacencyList.size(); i++)
    {
-      int minDegreeNode = -1;
-      int minDegree = numeric_limits<int>::max();
+
       for (const auto &nodeSet : AdjacencyList)
       {
          int node = nodeSet.first;
-         if (eliminatedNodes.find(node) == eliminatedNodes.end())
+         if (!eliminationOrder[node])
          {
-            int degree = nodeSet.second.size();
-            if (degree < minDegree)
+            if (eliminatedNodes.find(node) == eliminatedNodes.end())
             {
-               minDegree = degree;
-               minDegreeNode = node;
+               int degree = nodeSet.second.size();
+               if (degree < minDegree)
+               {
+                  minDegree = degree;
+                  minDegreeNode = node;
+               }
             }
          }
       }
@@ -123,11 +127,14 @@ bool inEliminationOrder(unordered_map<int, unordered_map<int, int>> &AdjacencyLi
          return false;
       }
       eliminatedNodes.insert(minDegreeNode);
+
       if (nodeCheck == minDegreeNode)
       {
+         cout << "Add " << nodeCheck << " to elimination order.\n";
          return true;
       }
    }
+
    return false;
 }
 
@@ -135,15 +142,19 @@ void addToEliminationOrder(unordered_map<int, unordered_map<int, int>> &Adjacenc
 {
    for (const auto &[node, edgeSet] : AdjacencyList)
    {
-      eliminationOrder[node] = inEliminationOrder(AdjacencyList, node);
+      if (!eliminationOrder[node])
+      {
+         eliminationOrder[node] = inEliminationOrder(AdjacencyList, node, eliminationOrder);
+      }
    }
+   cout << "Went through entire list.\n";
 }
 
 float clusteringCoefficient(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int node)
 {
    unordered_map<int, int> &neighbors = AdjacencyList.at(node);
    int edges = 0;
-   int possibleEdges = neighbors.size() * (neighbors.size() - 1);
+   int possibleEdges = (neighbors.size() * (neighbors.size() - 1)) / 2;
    if (possibleEdges == 0)
    {
       return 0.0;
@@ -240,22 +251,30 @@ void edgeAddingAlgorithm(unordered_map<int, unordered_map<int, int>> &AdjacencyL
       cout << "\nEverything is eliminated.\n";
       return;
    }
-   cout << "\nI got here at least once.\n";
+
    // select next node by clustering coefficient
    int nextNode = findLowestClusteringCoefficient(AdjacencyList, eliminationOrder, clusteringCoefficients);
-
+   cout << "I'm the node with the lowest clustering coefficient: " << nextNode << "\n";
    // as long as a non-zero result was found, continue algorithm
-   if (nextNode != -1)
+   if (nextNode != -1 && !eliminationOrder[nextNode])
    {
       fillInEdges(AdjacencyList, nextNode);
+   }
+
+   if (nextNode == -1 && !isEliminationOrder(eliminationOrder))
+   {
+      cout << "\n Could not make graph chordal. \n";
+      return;
    }
 
    // recursively call until complete
    edgeAddingAlgorithm(AdjacencyList, eliminationOrder, clusteringCoefficients);
 }
 
+// current error culprit
 void fillInEdges(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int node)
 {
+   // for the node with the lowest clustering coefficient, add a new edge between it and a neighbor of another neighbor?
    unordered_map<int, int> neighbors = AdjacencyList.at(node);
    for (const auto &pair : neighbors)
    {
@@ -265,8 +284,10 @@ void fillInEdges(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int
          int anotherNeighbor = otherPair.first;
          if (neighbor != anotherNeighbor && AdjacencyList[neighbor].count(anotherNeighbor) == 0)
          {
-            AdjacencyList[node][anotherNeighbor] = 0;
-            AdjacencyList[anotherNeighbor][node] = 0;
+            cout << "Added edge between " << neighbor << " and " << anotherNeighbor << "\n";
+            AdjacencyList[neighbor][anotherNeighbor] = 0;
+            AdjacencyList[anotherNeighbor][neighbor] = 0;
+            return;
          }
       }
    }
@@ -278,7 +299,7 @@ int findLowestClusteringCoefficient(unordered_map<int, unordered_map<int, int>> 
    int lowestNode = -1;
    for (const auto &[node, edgeSet] : AdjacencyList)
    {
-      if (eliminationOrder[node] == false)
+      if (!eliminationOrder[node])
       {
          clusteringCoefficients[node] = clusteringCoefficient(AdjacencyList, node);
          if (lowestCC > clusteringCoefficients[node] && clusteringCoefficients[node] != 0)
