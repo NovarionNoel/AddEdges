@@ -97,6 +97,7 @@ bool isEliminationOrder(unordered_map<int, bool> &eliminationOrder)
    return true;
 }
 
+// culprit of errors, marks all nodes as belonging to the elimination order
 bool inEliminationOrder(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int nodeCheck)
 {
    unordered_set<int> eliminatedNodes;
@@ -112,7 +113,7 @@ bool inEliminationOrder(unordered_map<int, unordered_map<int, int>> &AdjacencyLi
             int degree = nodeSet.second.size();
             if (degree < minDegree)
             {
-               minDegree == degree;
+               minDegree = degree;
                minDegreeNode = node;
             }
          }
@@ -161,6 +162,7 @@ float clusteringCoefficient(unordered_map<int, unordered_map<int, int>> &Adjacen
    }
    return static_cast<float>((edges) / static_cast<float>(possibleEdges));
 }
+
 string getCurrentDateTime(const string &format)
 {
    auto now = chrono::system_clock::now();
@@ -235,9 +237,10 @@ void edgeAddingAlgorithm(unordered_map<int, unordered_map<int, int>> &AdjacencyL
    // then, check if ordering is valid
    if (isEliminationOrder(eliminationOrder))
    {
+      cout << "\nEverything is eliminated.\n";
       return;
    }
-
+   cout << "\nI got here at least once.\n";
    // select next node by clustering coefficient
    int nextNode = findLowestClusteringCoefficient(AdjacencyList, eliminationOrder, clusteringCoefficients);
 
@@ -337,7 +340,8 @@ int main(int argc, char *argv[])
             clusteringCoefficients[nodeSet.first] = 0;
          }
          edgeAddingAlgorithm(AdjacencyList, eliminationOrder, clusteringCoefficients);
-         cout << "CHORDAL LIST\n";
+
+         cout << "\n\nCHORDAL LIST\n";
          printAdjList(AdjacencyList);
       }
    }
