@@ -31,6 +31,7 @@ finding minimum fill in is NP complete (go cry about it)
 void fillInEdges(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int node);
 int findLowestClusteringCoefficient(unordered_map<int, unordered_map<int, int>> &AdjacencyList, unordered_map<int, bool> &eliminationOrder, unordered_map<int, float> &clusteringCoefficients);
 
+// using the file, create an adjacency list with weights
 unordered_map<int, unordered_map<int, int>> createAdjacencyList(fstream *file, int type, int skip)
 {
    unordered_map<int, unordered_map<int, int>> AdjacencyList;
@@ -99,6 +100,7 @@ bool isEliminationOrder(unordered_map<int, bool> &eliminationOrder)
    return true;
 }
 
+// verify if a node belongs in the elimination order
 bool inEliminationOrder(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int nodeCheck, unordered_map<int, bool> &eliminationOrder)
 {
    unordered_set<int> eliminatedNodes;
@@ -152,6 +154,7 @@ void addToEliminationOrder(unordered_map<int, unordered_map<int, int>> &Adjacenc
    cout << "Went through entire list.\n";
 }
 
+// find and return the clustering coefficient of a node
 float clusteringCoefficient(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int node)
 {
    unordered_map<int, int> &neighbors = AdjacencyList.at(node);
@@ -176,6 +179,7 @@ float clusteringCoefficient(unordered_map<int, unordered_map<int, int>> &Adjacen
    return static_cast<float>((edges) / static_cast<float>(possibleEdges));
 }
 
+// get the current date and time to stamp error log files
 string getCurrentDateTime(const string &format)
 {
    auto now = chrono::system_clock::now();
@@ -186,6 +190,7 @@ string getCurrentDateTime(const string &format)
    return ss.str();
 }
 
+// log an error to file
 void logError(const string &message)
 {
    cerr << message << endl;
@@ -196,6 +201,7 @@ void logError(const string &message)
    }
 }
 
+// open a graph that only has edges supplied
 fstream singleOpen(const string &filename)
 {
    const int maxAttempts = 3;
@@ -227,6 +233,7 @@ fstream singleOpen(const string &filename)
    return file;
 }
 
+// print the adjacency list of a graph
 void printAdjList(unordered_map<int, unordered_map<int, int>> adjList)
 {
    for (auto const &[node, edgeSet] : adjList)
@@ -241,6 +248,7 @@ void printAdjList(unordered_map<int, unordered_map<int, int>> adjList)
    }
 }
 
+// algorithm that adds edges to the graph until chordal
 void edgeAddingAlgorithm(unordered_map<int, unordered_map<int, int>> &AdjacencyList, unordered_map<int, bool> &eliminationOrder, unordered_map<int, float> &clusteringCoefficients)
 {
 
@@ -257,12 +265,14 @@ void edgeAddingAlgorithm(unordered_map<int, unordered_map<int, int>> &AdjacencyL
    // select next node by clustering coefficient
    int nextNode = findLowestClusteringCoefficient(AdjacencyList, eliminationOrder, clusteringCoefficients);
    cout << "I'm the node with the lowest clustering coefficient: " << nextNode << "\n";
+
    // as long as a non-zero result was found, continue algorithm
    if (nextNode != -1 && !eliminationOrder[nextNode])
    {
       fillInEdges(AdjacencyList, nextNode);
    }
 
+   // if no node to add edges to, and no complete elimination order, failed to make chordal
    if (nextNode == -1 && !isEliminationOrder(eliminationOrder))
    {
       cout << "\n Could not make graph chordal. \n";
@@ -273,13 +283,13 @@ void edgeAddingAlgorithm(unordered_map<int, unordered_map<int, int>> &AdjacencyL
    edgeAddingAlgorithm(AdjacencyList, eliminationOrder, clusteringCoefficients);
 }
 
-// current error culprit
+// fill in an edge between neighbors of a node with the lowest clustering coefficient
 void fillInEdges(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int node)
 {
-   // for the node with the lowest clustering coefficient, add a new edge between it and a neighbor of another neighbor?
    unordered_map<int, int> neighbors = AdjacencyList.at(node);
    for (const auto &pair : neighbors)
    {
+      // check each neighbor for another neighbor that doesn't already share an edge between them, and add one edge
       int neighbor = pair.first;
       for (const auto &otherPair : neighbors)
       {
@@ -295,6 +305,7 @@ void fillInEdges(unordered_map<int, unordered_map<int, int>> &AdjacencyList, int
    }
 }
 
+// find the node with the lowest nonzero clustering coefficient
 int findLowestClusteringCoefficient(unordered_map<int, unordered_map<int, int>> &AdjacencyList, unordered_map<int, bool> &eliminationOrder, unordered_map<int, float> &clusteringCoefficients)
 {
    int lowestCC = 2;
