@@ -10,6 +10,7 @@
 #include <unordered_set>
 
 using namespace std;
+
 /*
 Adding edges
 attempt elimination order
@@ -20,6 +21,7 @@ fill-in
 attempt elimination order
 finding minimum fill in is NP complete (go cry about it)
 */
+
 // file types
 #define TXT 11
 #define MTX 12

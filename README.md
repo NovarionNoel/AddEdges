@@ -1,8 +1,8 @@
-#AddEdges
+# AddEdges
 
 This program takes graph input from various files and converts it into a chordal graph by adding edges until the graph is chordal.
 
-##How To Run
+## How To Run
 
 Compile using c++17 or higher:
 
